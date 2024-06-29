@@ -14,11 +14,8 @@ defmodule UniversalTranslator do
     {tree, []} =
       input
       |> String.split(" ")
-    |> IO.inspect()
       |> Enum.map(&decode_token/1)
-    |> IO.inspect()
       |> build_ast()
-    |> IO.inspect()
 
     evaluate(tree, Map.new())
   end
