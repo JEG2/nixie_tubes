@@ -50,20 +50,35 @@ defmodule Spaceship do
         end
 
       vxs_mid = ceil(abs(nx - x) / 2)
-      yxs_mid = ceil(abs(ny - y) / 2)
-      total = max(vxs_mid, yxs_mid) + 1
+      vys_mid = ceil(abs(ny - y) / 2)
+      total = max(vxs_mid, vys_mid) + 1
 
       vxs =
         List.duplicate(x_dir, vxs_mid) ++
           List.duplicate(0, total - vxs_mid * 2) ++
           List.duplicate(-x_dir, vxs_mid)
 
-      yxs =
-        List.duplicate(y_dir, yxs_mid) ++
-          List.duplicate(0, total - yxs_mid * 2) ++
-          List.duplicate(-y_dir, yxs_mid)
+      vys =
+        List.duplicate(y_dir, vys_mid) ++
+          List.duplicate(0, total - vys_mid * 2) ++
+          List.duplicate(-y_dir, vys_mid)
 
-      vs = Enum.zip(vxs, yxs)
+      buttons =
+        vxs
+        |> Enum.zip(vys)
+        |> Enum.reduce(s.buttons, fn vxy, acc ->
+          case vxy do
+            {-1, 1} -> [7 | acc]
+            {0, 1} -> [8 | acc]
+            {1, 1} -> [9 | acc]
+            {-1, 0} -> [6 | acc]
+            {0, 0} -> [5 | acc]
+            {1, 0} -> [4 | acc]
+            {-1, -1} -> [1 | acc]
+            {0, -1} -> [2 | acc]
+            {1, -1} -> [3 | acc]
+          end
+        end)
     end)
     |> Stream.drop(1)
     |> Enum.take(1)
