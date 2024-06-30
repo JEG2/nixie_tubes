@@ -20,6 +20,13 @@ defmodule UniversalTranslator do
     evaluate(tree, Map.new())
   end
 
+  def just_build_ast(input) do
+    input
+    |> String.split(" ")
+    |> Enum.map(&decode_token/1)
+    |> build_ast()
+  end
+
   def decode_token("S" <> input) do
     input
     |> String.codepoints()

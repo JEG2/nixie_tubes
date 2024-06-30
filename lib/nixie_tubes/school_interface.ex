@@ -33,6 +33,14 @@ defmodule SchoolInterface do
     |> String.replace("\nYou scored some points for using the echo service!\n", "")
   end
 
+  def solve_with_icfp(game, icfp) do
+    command = UniversalTranslator.encode("solve #{game} ")
+
+    "B. #{command} #{icfp}"
+    |> Submitomatic.communicate()
+    |> UniversalTranslator.decode()
+  end
+
   def test_3d(program, variables \\ []) do
     a = Keyword.get(variables, :a, 0)
     b = Keyword.get(variables, :b, 0)

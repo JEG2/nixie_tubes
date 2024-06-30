@@ -16,6 +16,24 @@ defmodule LambdaMan do
     |> Enum.join()
   end
 
+  def manual_solve(number) do
+    File.read!(Path.join(:code.priv_dir(:nixie_tubes), "lambdaman/#{number}.txt"))
+    |> build_graph()
+    |> move_and_show(number)
+  end
+
+  def interactive(number) do
+    solution_file =
+      File.open!(
+        Path.join(:code.priv_dir(:nixie_tubes), "lambdaman/#{number}_solution.txt"),
+        [:write]
+      )
+
+    File.read!(Path.join(:code.priv_dir(:nixie_tubes), "lambdaman/#{number}.txt"))
+    |> build_graph()
+    |> record_moves(solution_file)
+  end
+
   def build_graph(grid) do
     parsed =
       grid
@@ -67,17 +85,10 @@ defmodule LambdaMan do
   def find_paths(struct) do
     show_grid(struct)
     # remove origin / edges
-    neighbours = :digraph.out_neighbours(struct.pills, struct.position)
+    neighbours = collect_pill(struct)
 
-    neighbours
-    |> Enum.each(fn connection ->
-      :digraph.del_edge(struct.pills, {struct.position, connection})
-      :digraph.del_edge(struct.pills, {connection, struct.position})
-    end)
-
-    :digraph.del_vertex(struct.pills, struct.position)
-
-    entrances = MapSet.delete(struct.entrances, struct.position) |> MapSet.union(MapSet.new(neighbours))
+    entrances =
+      MapSet.delete(struct.entrances, struct.position) |> MapSet.union(MapSet.new(neighbours))
 
     new_struct =
       if length(neighbours) == 1 do
@@ -126,6 +137,7 @@ defmodule LambdaMan do
           move_to(acc, from, to)
         end)
       end
+
     if :digraph.no_vertices(struct.pills) == 1 do
       new_struct
     else
@@ -150,6 +162,7 @@ defmodule LambdaMan do
   end
 
   def show_grid(struct) do
+    IO.write("\r\n")
     IO.write(IO.ANSI.clear())
 
     Enum.reduce(0..struct.max_y, "", fn y, acc ->
@@ -166,9 +179,11 @@ defmodule LambdaMan do
           acc <> cell
         end)
 
-      row <> "\n"
+      row <> "\r\n"
     end)
-    |> IO.puts()
+    |> IO.write()
+
+    IO.write("\r\n")
 
     # IO.gets("Push Key to continue")
   end
@@ -179,6 +194,71 @@ defmodule LambdaMan do
       "D" -> {x, y + 1}
       "L" -> {x - 1, y}
       "R" -> {x + 1, y}
+    end
+  end
+
+  def move_and_show(struct, number) do
+    File.stream!(Path.join(:code.priv_dir(:nixie_tubes), "lambdaman/#{number}_solution.txt"))
+    |> Stream.flat_map(fn line ->
+      [count, direction] = line |> String.trim() |> String.split(":")
+
+      List.duplicate(direction, String.to_integer(count))
+    end)
+    |> Enum.reduce(struct, fn move, acc ->
+      to = carry_on(move, acc.position)
+
+      unless :digraph.vertex(acc.pills, to) do
+        raise "invalid move from: #{inspect(acc.position)}, to: #{inspect(to)}"
+      end
+
+      collect_pill(acc)
+
+      move_to(acc, acc.position, to)
+    end)
+    |> show_grid()
+  end
+
+  def collect_pill(struct) do
+    neighbours = :digraph.out_neighbours(struct.pills, struct.position)
+
+    neighbours
+    |> Enum.each(fn connection ->
+      :digraph.del_edge(struct.pills, {struct.position, connection})
+      :digraph.del_edge(struct.pills, {connection, struct.position})
+    end)
+
+    :digraph.del_vertex(struct.pills, struct.position)
+
+    neighbours
+  end
+
+  def record_moves(struct, solution_file) do
+    show_grid(struct)
+    input = IO.getn("", 1)
+
+    move =
+      case input do
+        "0" -> System.halt()
+        "w" -> "U"
+        "a" -> "L"
+        "s" -> "D"
+        "d" -> "R"
+        _ -> nil
+      end
+
+    if move do
+      to = carry_on(move, struct.position)
+
+      if :digraph.vertex(struct.paths, to) do
+        collect_pill(struct)
+        IO.write(solution_file, move)
+
+        move_to(struct, struct.position, to) |> record_moves(solution_file)
+      else
+        record_moves(struct, solution_file)
+      end
+    else
+      record_moves(struct, solution_file)
     end
   end
 end
